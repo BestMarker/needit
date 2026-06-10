@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Needit - Profil</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="bg-body-tertiary">
+
+<!-- Navbar -->
+<nav class="navbar navbar-expand-lg navbar-light bg-white sticky-top shadow-sm">
+    <div class="container">
+        <a class="navbar-brand text-primary fw-bold fs-4" href="index.html">Needit.</a>
+        <div class="d-flex align-items-center">
+            <span id="navKarma" class="badge bg-warning text-dark me-3 rounded-pill p-2"><i class="bi bi-star-fill"></i> <span id="karmaScore">0</span> Karma</span>
+            <span id="navUsername" class="me-3 fw-semibold text-muted"></span>
+            <button id="logoutBtn" class="btn btn-outline-danger btn-sm rounded-pill">Çıkış Yap</button>
+        </div>
+    </div>
+</nav>
+
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            
+            <!-- Profile Header -->
+            <div class="card border-0 shadow-sm rounded-4 mb-4 text-center p-4">
+                <div class="d-flex justify-content-center mb-3">
+                    <img id="profileAvatar" src="" alt="Avatar" class="rounded-circle d-none" style="width: 120px; height: 120px; object-fit: cover; background: #e9ecef;">
+                    <div id="profileAvatarFallback" class="rounded-circle d-flex align-items-center justify-content-center text-white fw-bold" style="width: 120px; height: 120px; background: var(--primary-color); font-size: 3rem;"></div>
+                </div>
+                <h3 class="fw-bold mb-1" id="profileUsername">Yükleniyor...</h3>
+                <div class="text-muted small mb-3">Katılma Tarihi: <span id="profileJoined"></span></div>
+                <div class="d-flex justify-content-center gap-3 mb-3">
+                    <span class="badge bg-warning text-dark rounded-pill p-2 px-3 fs-6"><i class="bi bi-star-fill"></i> <span id="profileKarma">0</span> Karma</span>
+                </div>
+                
+                <button id="editProfileBtn" class="btn btn-outline-primary rounded-pill px-4 d-none" data-bs-toggle="modal" data-bs-target="#avatarModal">Profili Düzenle</button>
+            </div>
+
+            <!-- Tabs -->
+            <ul class="nav nav-pills nav-justified mb-4 bg-white rounded-pill shadow-sm p-1" id="profileTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active rounded-pill fw-bold" id="posts-tab" data-bs-toggle="tab" data-bs-target="#postsPane" type="button" role="tab">Gönderiler</button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link rounded-pill fw-bold" id="comments-tab" data-bs-toggle="tab" data-bs-target="#commentsPane" type="button" role="tab">Yorumlar</button>
+                </li>
+            </ul>
+
+            <!-- Tab Content -->
+            <div class="tab-content" id="profileTabsContent">
+                <div class="tab-pane fade show active" id="postsPane" role="tabpanel">
+                    <div id="userPostsContainer">
+                        <div class="text-center text-muted p-4">Gönderiler yükleniyor...</div>
+                    </div>
+                </div>
+                <div class="tab-pane fade" id="commentsPane" role="tabpanel">
+                    <div id="userCommentsContainer">
+                        <div class="text-center text-muted p-4">Yorumlar yükleniyor...</div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<!-- Avatar Modal -->
+<div class="modal fade" id="avatarModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content rounded-4 border-0 shadow">
+            <div class="modal-header border-bottom-0 pb-0">
+                <h5 class="modal-title fw-bold">Profili Düzenle</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <ul class="nav nav-tabs mb-3" role="tablist">
+                    <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#avatarBuilder">Karakter Oluşturucu</button></li>
+                    <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#customUpload">Fotoğraf Yükle</button></li>
+                </ul>
+
+                <div class="tab-content">
+                    <!-- Builder -->
+                    <div class="tab-pane fade show active" id="avatarBuilder">
+                        <div class="row">
+                            <div class="col-md-5 text-center">
+                                <img id="previewAvatar" src="" alt="Preview" class="rounded-circle border" style="width: 150px; height: 150px; background: #f0f0f0;">
+                            </div>
+                            <div class="col-md-7">
+                                <label class="form-label small">Saç / Şapka</label>
+                                <select id="avatarHair" class="form-select mb-2" onchange="updateAvatarPreview()">
+                                    <option value="short01">Kısa 1</option>
+                                    <option value="short02">Kısa 2</option>
+                                    <option value="long01">Uzun 1</option>
+                                    <option value="long02">Uzun 2</option>
+                                </select>
+                                <label class="form-label small">Ağız</label>
+                                <select id="avatarMouth" class="form-select mb-2" onchange="updateAvatarPreview()">
+                                    <option value="smile01">Gülümse 1</option>
+                                    <option value="smile02">Gülümse 2</option>
+                                </select>
+                                <label class="form-label small">Gözlük / Aksesuar</label>
+                                <select id="avatarGlasses" class="form-select mb-2" onchange="updateAvatarPreview()">
+                                    <option value="none">Yok</option>
+                                    <option value="glasses01">Gözlük 1</option>
+                                    <option value="glasses02">Gözlük 2</option>
+                                </select>
+                                <button class="btn btn-primary mt-3 w-100 rounded-pill" onclick="saveAvatarBuilder()">Kaydet</button>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Custom Upload -->
+                    <div class="tab-pane fade" id="customUpload">
+                        <input type="file" id="customAvatarFile" class="form-control mb-3" accept="image/*">
+                        
+                        <div id="cropperContainer" class="mb-3 d-none text-center">
+                            <div style="max-height: 350px; width: 100%; overflow: hidden; display: inline-block;">
+                                <img id="cropperImage" src="" style="max-width: 100%; display: block;">
+                            </div>
+                            <p class="small text-muted mt-2">Fare tekerleğiyle yakınlaştırıp sürükleyerek ortalayabilirsiniz.</p>
+                        </div>
+
+                        <button id="uploadAvatarBtn" class="btn btn-primary w-100 rounded-pill d-none" onclick="saveCustomAvatarCropped()">Kırp ve Yükle</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
+<script src="/socket.io/socket.io.js"></script>
+<script src="js/app.js"></script>
+<script>
+    const urlParams = new URLSearchParams(window.location.search);
+    const profileUsername = urlParams.get('user');
+
+    if (!profileUsername) window.location.href = 'index.html';
+
+    async function loadProfile() {
+        try {
+            const res = await fetch(`${API_URL}/users/profile/${profileUsername}`);
+            if (!res.ok) {
+                document.getElementById('profileUsername').innerText = 'Kullanıcı Bulunamadı';
+                return;
+            }
+            const user = await res.json();
+            
+            document.getElementById('profileUsername').innerText = user.username;
+            document.getElementById('profileKarma').innerText = user.karma;
+            document.getElementById('profileJoined').innerText = new Date(user.created_at).toLocaleDateString('tr-TR');
+
+            const avatarImg = document.getElementById('profileAvatar');
+            const avatarFallback = document.getElementById('profileAvatarFallback');
+            
+            if (user.avatar_url) {
+                avatarImg.src = user.avatar_url;
+                avatarImg.classList.remove('d-none');
+                avatarFallback.classList.remove('d-flex');
+                avatarFallback.classList.add('d-none');
+            } else {
+                avatarImg.classList.add('d-none');
+                avatarFallback.classList.remove('d-none');
+                avatarFallback.classList.add('d-flex');
+                avatarFallback.innerText = user.username.charAt(0).toUpperCase();
+            }
+
+            // Show edit button if it's the current user
+            if (currentUser && currentUser.username === user.username) {
+                document.getElementById('editProfileBtn').classList.remove('d-none');
+                
+                // Pre-fill builder
+                if (user.avatar_config) {
+                    const config = JSON.parse(user.avatar_config);
+                    if (config.hair) document.getElementById('avatarHair').value = config.hair;
+                    if (config.mouth) document.getElementById('avatarMouth').value = config.mouth;
+                    if (config.glasses) document.getElementById('avatarGlasses').value = config.glasses;
+                }
+                updateAvatarPreview();
+            }
+
+            loadUserPosts();
+            loadUserComments();
+        } catch (err) {
+            console.error(err);
+        }
+    }
+
+    async function loadUserPosts() {
+        const container = document.getElementById('userPostsContainer');
+        try {
+            const res = await fetch(`${API_URL}/users/profile/${profileUsername}/posts`);
+            const posts = await res.json();
+            
+            if (posts.length === 0) {
+                container.innerHTML = '<div class="text-center text-muted p-4">Hiç gönderi yok.</div>';
+                return;
+            }
+
+            container.innerHTML = posts.map(post => {
+                const date = new Date(post.created_at).toLocaleString('tr-TR');
+                return `
+                    <div class="post-card shadow-sm cursor-pointer mb-3" onclick="window.location.href='post.html?id=${post.id}'" style="cursor: pointer;">
+                        <div class="post-header pb-1">
+                            <div class="post-meta">
+                                <span class="time">${date}</span>
+                            </div>
+                        </div>
+                        <div class="post-content mt-1 text-truncate" style="max-height: 80px; overflow: hidden;">${post.content || (post.media_url ? '[Medya İçeriği]' : '')}</div>
+                        <div class="post-footer p-2 bg-light text-muted small">
+                            <span><i class="bi bi-arrow-up"></i> ${post.score} Puan</span> &middot; 
+                            <span><i class="bi bi-chat-text"></i> ${post.comment_count} Yorum</span>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        } catch (err) {
+            container.innerHTML = '<div class="text-danger p-4">Hata oluştu.</div>';
+        }
+    }
+
+    async function loadUserComments() {
+        const container = document.getElementById('userCommentsContainer');
+        try {
+            const res = await fetch(`${API_URL}/users/profile/${profileUsername}/comments`);
+            const comments = await res.json();
+            
+            if (comments.length === 0) {
+                container.innerHTML = '<div class="text-center text-muted p-4">Hiç yorum yok.</div>';
+                return;
+            }
+
+            container.innerHTML = comments.map(c => `
+                <div class="card border-0 shadow-sm mb-2 cursor-pointer" onclick="window.location.href='post.html?id=${c.post_id}'" style="cursor:pointer;">
+                    <div class="card-body p-3">
+                        <div class="text-muted small mb-1">Gönderiye yorum yapıldı: <em>"${c.post_content.substring(0, 30)}..."</em></div>
+                        <div>${c.content}</div>
+                        <div class="text-muted small mt-2">${new Date(c.created_at).toLocaleString('tr-TR')}</div>
+                    </div>
+                </div>
+            `).join('');
+        } catch (err) {
+            container.innerHTML = '<div class="text-danger p-4">Hata oluştu.</div>';
+        }
+    }
+
+    function updateAvatarPreview() {
+        const hair = document.getElementById('avatarHair').value;
+        const mouth = document.getElementById('avatarMouth').value;
+        const glasses = document.getElementById('avatarGlasses').value;
+        let glassesParam = glasses === 'none' ? '' : `&glasses=${glasses}`;
+        
+        const url = `https://api.dicebear.com/9.x/adventurer/svg?seed=${currentUser.username}&hair=${hair}&mouth=${mouth}${glassesParam}`;
+        document.getElementById('previewAvatar').src = url;
+    }
+
+    async function saveAvatarBuilder() {
+        const hair = document.getElementById('avatarHair').value;
+        const mouth = document.getElementById('avatarMouth').value;
+        const glasses = document.getElementById('avatarGlasses').value;
+        let glassesParam = glasses === 'none' ? '' : `&glasses=${glasses}`;
+        
+        const avatarUrl = `https://api.dicebear.com/9.x/adventurer/svg?seed=${currentUser.username}&hair=${hair}&mouth=${mouth}${glassesParam}`;
+        const config = JSON.stringify({ hair, mouth, glasses });
+
+        try {
+            const res = await fetch(`${API_URL}/auth/avatar`, {
+                method: 'POST',
+                headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+                body: JSON.stringify({ avatarUrl, config })
+            });
+            if (res.ok) {
+                window.location.reload();
+            }
+        } catch (err) {
+            console.error(err);
+        }
+    }
+
+    let cropper;
+
+    document.getElementById('customAvatarFile').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function(event) {
+            document.getElementById('cropperContainer').classList.remove('d-none');
+            document.getElementById('uploadAvatarBtn').classList.remove('d-none');
+            
+            const image = document.getElementById('cropperImage');
+            image.src = event.target.result;
+
+            if (cropper) {
+                cropper.destroy();
+            }
+            cropper = new Cropper(image, {
+                aspectRatio: 1,
+                viewMode: 1,
+                dragMode: 'move',
+                autoCropArea: 1,
+                restore: false,
+                guides: false,
+                center: false,
+                highlight: false,
+                cropBoxMovable: false,
+                cropBoxResizable: false,
+                toggleDragModeOnDblclick: false,
+            });
+        };
+        reader.readAsDataURL(file);
+    });
+
+    async function saveCustomAvatarCropped() {
+        if (!cropper) return;
+        
+        cropper.getCroppedCanvas({
+            width: 300,
+            height: 300
+        }).toBlob(async (blob) => {
+            const formData = new FormData();
+            formData.append('avatar', blob, 'avatar.jpg');
+
+            try {
+                const res = await fetch(`${API_URL}/auth/avatar`, {
+                    method: 'POST',
+                    headers: authHeaders(),
+                    body: formData
+                });
+                if (res.ok) {
+                    window.location.reload();
+                }
+            } catch (err) {
+                console.error(err);
+            }
+        }, 'image/jpeg');
+    }
+
+    setTimeout(loadProfile, 300);
+
+</script>
+</body>
+</html>

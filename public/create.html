@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Needit - Gönderi Oluştur</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+    <!-- Quill.js for Rich Text -->
+    <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="bg-body-tertiary">
+
+<!-- Navbar -->
+<nav class="navbar navbar-expand-lg navbar-light bg-white sticky-top shadow-sm">
+    <div class="container">
+        <a class="navbar-brand text-primary fw-bold fs-4" href="index.html">Needit.</a>
+        <div class="d-flex align-items-center">
+            <span id="navKarma" class="badge bg-warning text-dark me-3 rounded-pill p-2"><i class="bi bi-star-fill"></i> <span id="karmaScore">0</span> Karma</span>
+            <span id="navUsername" class="me-3 fw-semibold text-muted"></span>
+            <button id="logoutBtn" class="btn btn-outline-danger btn-sm rounded-pill">Çıkış Yap</button>
+        </div>
+    </div>
+</nav>
+
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card border-0 shadow-sm rounded-4 mb-4">
+                <div class="card-body p-4">
+                    <h4 class="mb-4 text-primary fw-bold">Yeni Gönderi Oluştur</h4>
+                    
+                    <form id="createPostFormPage">
+                        <div class="mb-3">
+                            <label class="form-label text-muted fw-bold">İçerik</label>
+                            <div id="editor-container" style="height: 250px; background: white; border-radius: 8px;"></div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="form-label text-muted fw-bold">Medya (Maksimum 20 fotoğraf/video)</label>
+                            <input type="file" id="postMediaPage" class="form-control" accept="image/*,video/*" multiple>
+                        </div>
+
+                        <div class="d-flex justify-content-end">
+                            <a href="index.html" class="btn btn-light rounded-pill px-4 me-2">İptal</a>
+                            <button type="submit" class="btn btn-primary rounded-pill px-5 fw-semibold">Paylaş</button>
+                        </div>
+                    </form>
+
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
+<script src="/socket.io/socket.io.js"></script>
+<script src="js/app.js"></script>
+<script>
+    const urlParams = new URLSearchParams(window.location.search);
+    const editPostId = urlParams.get('edit');
+
+    // Initialize Quill editor
+    var quill = new Quill('#editor-container', {
+        theme: 'snow',
+        placeholder: 'Ne düşünüyorsun?',
+        modules: {
+            toolbar: [
+                ['bold', 'italic', 'underline', 'strike'],
+                ['blockquote', 'code-block'],
+                [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                [{ 'header': [1, 2, 3, 4, 5, 6, false] }],
+                [{ 'color': [] }, { 'background': [] }],
+                [{ 'align': [] }],
+                ['clean']
+            ]
+        }
+    });
+
+    const form = document.getElementById('createPostFormPage');
+    const submitBtn = form.querySelector('button[type="submit"]');
+
+    if (editPostId) {
+        document.querySelector('h4').innerText = 'Gönderiyi Düzenle';
+        submitBtn.innerText = 'Güncelle';
+        document.getElementById('postMediaPage').parentElement.style.display = 'none'; // Medya editlemeyi karmaşıklıktan kaçınmak için şimdilik gizle
+        
+        // Fetch post content
+        fetch(`${API_URL}/posts/${editPostId}`)
+            .then(res => res.json())
+            .then(post => {
+                document.querySelector('.ql-editor').innerHTML = post.content || '';
+            })
+            .catch(err => alert('Gönderi yüklenemedi.'));
+    }
+
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const content = document.querySelector('.ql-editor').innerHTML;
+        
+        try {
+            if (editPostId) {
+                // Edit existing post
+                const res = await fetch(`${API_URL}/posts/${editPostId}`, {
+                    method: 'PUT',
+                    headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ content })
+                });
+                if (res.ok) window.location.href = `post.html?id=${editPostId}`;
+                else alert('Gönderi güncellenemedi');
+            } else {
+                // Create new post
+                const files = document.getElementById('postMediaPage').files;
+                const formData = new FormData();
+                formData.append('content', content);
+                if (files.length > 0) {
+                    for(let i=0; i<files.length; i++) {
+                        formData.append('media', files[i]);
+                    }
+                    formData.append('type', files[0].type.startsWith('image/') ? 'image' : 'video');
+                } else {
+                    formData.append('type', 'text');
+                }
+
+                const res = await fetch(`${API_URL}/posts`, {
+                    method: 'POST',
+                    headers: authHeaders(),
+                    body: formData
+                });
+                
+                if (res.ok) window.location.href = 'index.html';
+                else alert('Gönderi paylaşılamadı');
+            }
+        } catch (err) {
+            alert('Bağlantı hatası');
+        }
+    });
+</script>
+</body>
+</html>

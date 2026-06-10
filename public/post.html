@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Needit - Gönderi Detayı</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        .ql-editor { padding: 0; } /* Reset quill spacing */
+        .award-badge {
+            background-color: #ffecd1;
+            color: #d17a00;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            font-weight: bold;
+            margin-right: 5px;
+            border: 1px solid #ffdbab;
+        }
+    </style>
+</head>
+<body class="bg-body-tertiary">
+
+<!-- Navbar -->
+<nav class="navbar navbar-expand-lg navbar-light bg-white sticky-top shadow-sm">
+    <div class="container">
+        <a class="navbar-brand text-primary fw-bold fs-4" href="index.html">Needit.</a>
+        <div class="d-flex align-items-center">
+            <span id="navKarma" class="badge bg-warning text-dark me-3 rounded-pill p-2"><i class="bi bi-star-fill"></i> <span id="karmaScore">0</span> Karma</span>
+            <span id="navUsername" class="me-3 fw-semibold text-muted"></span>
+            <button id="logoutBtn" class="btn btn-outline-danger btn-sm rounded-pill">Çıkış Yap</button>
+        </div>
+    </div>
+</nav>
+
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <a href="index.html" class="text-decoration-none text-muted mb-3 d-inline-block"><i class="bi bi-arrow-left"></i> Ana Sayfaya Dön</a>
+            
+            <div id="singlePostContainer">
+                <div class="text-center p-5"><div class="spinner-border text-primary"></div></div>
+            </div>
+
+            <!-- Give Award Modal -->
+            <div class="modal fade" id="awardModal" tabindex="-1">
+                <div class="modal-dialog modal-dialog-centered">
+                    <div class="modal-content rounded-4 border-0 shadow">
+                        <div class="modal-header border-bottom-0 pb-0">
+                            <h5 class="modal-title fw-bold">Ödül Gönder</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body text-center">
+                            <p class="text-muted small">Bu gönderiye ödül vererek yazarını destekleyin!</p>
+                            
+                            <div class="row g-2 mb-3">
+                                <div class="col-4">
+                                    <button class="btn btn-outline-secondary w-100 p-3 rounded-3" onclick="giveAward('Gümüş', 50, false)">
+                                        <div class="fs-1">🥈</div>
+                                        <div class="fw-bold mt-2">Gümüş</div>
+                                        <div class="small text-muted">50 Karma</div>
+                                    </button>
+                                </div>
+                                <div class="col-4">
+                                    <button class="btn btn-outline-warning w-100 p-3 rounded-3" onclick="giveAward('Altın', 100, false)">
+                                        <div class="fs-1">🥇</div>
+                                        <div class="fw-bold mt-2 text-warning">Altın</div>
+                                        <div class="small text-muted">100 Karma</div>
+                                    </button>
+                                </div>
+                                <div class="col-4">
+                                    <button class="btn btn-outline-info w-100 p-3 rounded-3" onclick="giveAward('Elmas', 300, false)">
+                                        <div class="fs-1">💎</div>
+                                        <div class="fw-bold mt-2 text-info">Elmas</div>
+                                        <div class="small text-muted">300 Karma</div>
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <hr>
+                            <h6 class="fw-bold text-start text-muted mb-2">Envanterinizdeki Ödüller (Bedava Gönder):</h6>
+                            <div id="inventoryContainer" class="text-start mb-3">
+                                <span class="small text-muted">Envanter yükleniyor...</span>
+                            </div>
+                            
+                            <hr>
+                            <h6 class="fw-bold text-start text-muted">Özel Görev Ödülleriniz:</h6>
+                            <div id="exclusiveAwardsContainer" class="text-start">
+                                <span class="small text-muted">Özel ödülünüz yok.</span>
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="/socket.io/socket.io.js"></script>
+<!-- Make sure we include Quill CSS internally so HTML renders properly -->
+<link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
+<script src="js/app.js"></script>
+<script>
+    const urlParams = new URLSearchParams(window.location.search);
+    const postId = urlParams.get('id');
+
+    if (!postId) window.location.href = 'index.html';
+
+    async function loadSinglePost() {
+        try {
+            const res = await fetch(`${API_URL}/posts/${postId}`, { headers: authHeaders() });
+            if (!res.ok) {
+                document.getElementById('singlePostContainer').innerHTML = '<div class="alert alert-danger">Gönderi bulunamadı.</div>';
+                return;
+            }
+            const post = await res.json();
+            
+            const date = new Date(post.created_at).toLocaleString('tr-TR');
+            const initial = post.username.charAt(0).toUpperCase();
+            
+            let mediaHtml = '';
+            if (post.media_url) {
+                let urls = [];
+                try {
+                    urls = JSON.parse(post.media_url);
+                } catch(e) {
+                    urls = [post.media_url]; // legacy support
+                }
+                
+                if (post.type === 'image') {
+                    mediaHtml = '<div class="d-flex flex-wrap gap-2 mt-2">' + urls.map(url => `
+                        <a href="${url}" target="_blank">
+                            <img src="${url}" class="post-media shadow-sm" style="max-height: 400px; width: auto; max-width: 100%; object-fit: cover; border-radius: 8px;" loading="lazy">
+                        </a>`).join('') + '</div>';
+                } else if (post.type === 'video') {
+                    mediaHtml = urls.map(url => `<video src="${url}" class="post-media mb-2 w-100 shadow-sm" style="border-radius: 8px;" controls></video>`).join('');
+                }
+            }
+
+            const awardIcons = {
+                'Gümüş': '🥈',
+                'Altın': '🥇',
+                'Elmas': '💎'
+            };
+
+            let awardsHtml = '';
+            if (post.awards && post.awards.length > 0) {
+                awardsHtml = `<div class="ms-auto d-flex gap-1">` + post.awards.map(a => `<span class="award-badge" title="${a.award_type}">${awardIcons[a.award_type] || '🏆'} ${a.count}</span>`).join('') + `</div>`;
+            }
+
+            const isOwner = currentUser && currentUser.username === post.username;
+            let optionsHtml = '';
+            if (isOwner) {
+                optionsHtml = `
+                    <div class="dropdown">
+                        <button class="btn btn-sm text-muted" data-bs-toggle="dropdown"><i class="bi bi-three-dots"></i></button>
+                        <ul class="dropdown-menu dropdown-menu-end shadow-sm">
+                            <li><a class="dropdown-item" href="create.html?edit=${post.id}"><i class="bi bi-pencil me-2"></i> Düzenle</a></li>
+                            <li><button class="dropdown-item text-danger" onclick="deletePost(${post.id})"><i class="bi bi-trash me-2"></i> Sil</button></li>
+                        </ul>
+                    </div>
+                `;
+            }
+            const editedHtml = post.is_edited ? '<span class="text-muted small fst-italic ms-1">(Düzenlendi)</span>' : '';
+
+            // Post Card
+            let html = `
+                <div class="post-card shadow-sm border-0 mb-4">
+                    <div class="post-header">
+                        ${post.avatar_url ? `<img src="${post.avatar_url}" class="post-avatar">` : `<div class="post-avatar">${initial}</div>`}
+                        <div class="post-meta w-100 d-flex justify-content-between">
+                            <div>
+                                <span class="username cursor-pointer" onclick="window.location.href='profile.html?user=${post.username}'" style="cursor:pointer;">${post.username} <span class="badge bg-light text-dark fw-normal border ms-1">${post.user_karma} Karma</span></span>
+                                <span class="time">${date} ${editedHtml}</span>
+                            </div>
+                            <div class="d-flex align-items-center">
+                                ${optionsHtml}
+                            </div>
+                        </div>
+                    </div>
+                    <!-- ql-editor class allows quill formats to display correctly -->
+                    <div class="post-content mt-2 ql-editor">${post.content || ''}</div>
+                    ${mediaHtml}
+                    <div class="post-footer d-flex align-items-center mt-3 pt-3 border-top w-100">
+                        <div class="vote-controls me-3">
+                            <button class="vote-btn upvote" onclick="votePostSingle(${post.id}, 1)"><i class="bi bi-arrow-up-circle"></i></button>
+                            <span class="vote-score">${post.score}</span>
+                            <button class="vote-btn downvote" onclick="votePostSingle(${post.id}, -1)"><i class="bi bi-arrow-down-circle"></i></button>
+                        </div>
+                        <button class="btn btn-sm btn-outline-warning rounded-pill px-3 fw-bold me-2" onclick="openAwardModal()">
+                            <i class="bi bi-gift"></i> Ödül Ver
+                        </button>
+                        ${awardsHtml}
+                    </div>
+                </div>
+
+                <h5 class="fw-bold mb-3">Yorumlar</h5>
+                <div class="card border-0 shadow-sm rounded-4 mb-4">
+                    <div class="card-body">
+                        <div class="d-flex mb-4">
+                            <input type="text" id="comment-input" class="form-control form-control-lg rounded-pill bg-soft border-0 me-2" placeholder="Yorum ekle...">
+                            <button class="btn btn-primary rounded-pill px-4 fw-semibold" onclick="addCommentSingle(${post.id})">Gönder</button>
+                        </div>
+                        <div id="comments-list">
+                            <div class="text-center text-muted small">Yükleniyor...</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            document.getElementById('singlePostContainer').innerHTML = html;
+            loadCommentsSingle(post.id);
+        } catch (err) {
+            console.error(err);
+        }
+    }
+
+    async function votePostSingle(id, voteType) {
+        await votePost(id, voteType); // Uses app.js function
+        loadSinglePost(); // reload single
+    }
+
+    async function loadCommentsSingle(id) {
+        const list = document.getElementById(`comments-list`);
+        try {
+            const res = await fetch(`${API_URL}/comments/${id}`, { headers: authHeaders() });
+            const comments = await res.json();
+            
+            if (comments.length === 0) {
+                list.innerHTML = '<div class="text-center text-muted p-3">Henüz yorum yok. İlk yorumu sen yap!</div>';
+                return;
+            }
+            list.innerHTML = comments.map(c => {
+                const isCommentOwner = currentUser && currentUser.username === c.username;
+                const cEdited = c.is_edited ? '<span class="text-muted small fst-italic ms-1">(Düzenlendi)</span>' : '';
+                let cOptions = '';
+                if (isCommentOwner) {
+                    cOptions = `
+                        <div class="dropdown ms-auto">
+                            <button class="btn btn-sm text-muted" data-bs-toggle="dropdown"><i class="bi bi-three-dots"></i></button>
+                            <ul class="dropdown-menu dropdown-menu-end shadow-sm">
+                                <li><button class="dropdown-item" onclick="editCommentUI(${c.id}, \`${c.content.replace(/"/g, '&quot;')}\`, ${postId})"><i class="bi bi-pencil me-2"></i> Düzenle</button></li>
+                                <li><button class="dropdown-item text-danger" onclick="deleteComment(${c.id}, ${postId})"><i class="bi bi-trash me-2"></i> Sil</button></li>
+                            </ul>
+                        </div>
+                    `;
+                }
+                return `
+                <div class="comment-item bg-white border mb-2 shadow-sm p-3 rounded-3" id="comment-${c.id}">
+                    <div class="d-flex align-items-center w-100 mb-1">
+                        <div class="comment-meta fw-bold">${c.username} <span class="text-muted fw-normal small ms-2">${new Date(c.created_at).toLocaleString('tr-TR')} ${cEdited}</span></div>
+                        ${cOptions}
+                    </div>
+                    <div class="comment-text" id="comment-text-${c.id}">${c.content}</div>
+                </div>
+            `}).join('');
+        } catch (err) {
+            console.error(err);
+        }
+    }
+
+    async function deleteComment(id, postId) {
+        if (!confirm('Yorumu silmek istediğinize emin misiniz?')) return;
+        try {
+            const res = await fetch(`${API_URL}/comments/${id}`, {
+                method: 'DELETE',
+                headers: authHeaders()
+            });
+            if (res.ok) loadCommentsSingle(postId);
+        } catch (err) {}
+    }
+
+    function editCommentUI(id, content, postId) {
+        const textDiv = document.getElementById(`comment-text-${id}`);
+        textDiv.innerHTML = `
+            <div class="d-flex mt-2">
+                <input type="text" id="edit-input-${id}" class="form-control form-control-sm me-2" value="${content}">
+                <button class="btn btn-sm btn-primary me-1" onclick="saveComment(${id}, ${postId})">Kaydet</button>
+                <button class="btn btn-sm btn-light" onclick="loadCommentsSingle(${postId})">İptal</button>
+            </div>
+        `;
+    }
+
+    async function saveComment(id, postId) {
+        const content = document.getElementById(`edit-input-${id}`).value.trim();
+        if(!content) return;
+        try {
+            await fetch(`${API_URL}/comments/${id}`, {
+                method: 'PUT',
+                headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+                body: JSON.stringify({ content })
+            });
+            loadCommentsSingle(postId);
+        } catch (err) {}
+    }
+
+    async function addCommentSingle(id) {
+        const input = document.getElementById(`comment-input`);
+        const content = input.value.trim();
+        if (!content) return;
+
+        try {
+            await fetch(`${API_URL}/comments/${id}`, {
+                method: 'POST',
+                headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+                body: JSON.stringify({ content })
+            });
+            input.value = '';
+            loadCommentsSingle(id);
+        } catch (err) {
+            console.error(err);
+        }
+    }
+
+    async function openAwardModal() {
+        const modal = new bootstrap.Modal(document.getElementById('awardModal'));
+        modal.show();
+        loadInventory();
+    }
+
+    async function loadInventory() {
+        const invContainer = document.getElementById('inventoryContainer');
+        try {
+            const res = await fetch(`${API_URL}/auth/inventory`, { headers: authHeaders() });
+            const items = await res.json();
+            
+            if (items.length === 0) {
+                invContainer.innerHTML = '<span class="small text-muted">Envanterinizde ödül bulunmuyor.</span>';
+                return;
+            }
+
+            invContainer.innerHTML = items.map(i => `
+                <button class="btn btn-sm btn-outline-success rounded-pill mb-1 me-1" onclick="giveAward('${i.award_type}', 0, false, true)">
+                    <i class="bi bi-box2-heart"></i> ${i.award_type} Gönder (Sahipsin: ${i.count})
+                </button>
+            `).join('');
+        } catch (err) {
+            invContainer.innerHTML = '<span class="small text-danger">Envanter yüklenemedi.</span>';
+        }
+    }
+
+    async function giveAward(type, cost, isExclusive, useInventory = false) {
+        try {
+            const res = await fetch(`${API_URL}/posts/${postId}/award`, {
+                method: 'POST',
+                headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+                body: JSON.stringify({ awardType: type, cost: cost, isExclusive: isExclusive, useInventory: useInventory })
+            });
+            const data = await res.json();
+            if (res.ok) {
+                bootstrap.Modal.getInstance(document.getElementById('awardModal')).hide();
+                loadSinglePost();
+                if (typeof loadCurrentUser === 'function') loadCurrentUser(); // Update karma in nav
+            } else {
+                alert(data.error);
+            }
+        } catch (err) {
+            alert('Bağlantı hatası');
+        }
+    }
+
+    // Call onload
+    loadSinglePost();
+</script>
+</body>
+</html>
